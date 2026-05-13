@@ -2,9 +2,9 @@ import re
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
 
-from .models import User
+from team_finder.mixins import GitHubUrlMixin
+from users.models import User
 
 
 class RegisterForm(forms.Form):
@@ -25,7 +25,7 @@ class LoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput, label='Пароль')
 
 
-class EditProfileForm(forms.ModelForm):
+class EditProfileForm(GitHubUrlMixin, forms.ModelForm):
     class Meta:
         model = User
         fields = ['name', 'surname', 'avatar', 'about', 'phone', 'github_url']
@@ -70,19 +70,6 @@ class EditProfileForm(forms.ModelForm):
 
         return normalized
 
-    def clean_github_url(self):
-        url = (self.cleaned_data.get('github_url') or '').strip()
-        if not url:
-            return url
-        validator = URLValidator()
-        try:
-            validator(url)
-        except ValidationError:
-            raise ValidationError('Введите корректную ссылку')
-        if 'github.com' not in url:
-            raise ValidationError('Ссылка должна вести на GitHub (github.com)')
-        return url
-
 
 class ChangePasswordForm(forms.Form):
     old_password = forms.CharField(widget=forms.PasswordInput, label='Текущий пароль')
@@ -101,9 +88,9 @@ class ChangePasswordForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        p1 = cleaned.get('new_password1')
-        p2 = cleaned.get('new_password2')
-        if p1 and p2 and p1 != p2:
+        new_password = cleaned.get('new_password1')
+        password_confirm = cleaned.get('new_password2')
+        if new_password and password_confirm and new_password != password_confirm:
             raise ValidationError('Пароли не совпадают')
         return cleaned
 
